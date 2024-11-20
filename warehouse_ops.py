@@ -7,6 +7,20 @@ import matplotlib.pyplot as plt
 class WarehouseOps:
     def __init__(self, dbname: str, user: str, password: str, host: str,
                  drop_db_flag: bool):
+        """
+        Initialize the WarehouseOps instance.
+
+        Parameters:
+        dbname (str): Name of the database.
+        user (str): Username for the database.
+        password (str): Password for the database user.
+        host (str): Database host address.
+        drop_db_flag (bool): Flag indicating whether to drop the existing database.
+
+        Returns:
+        None
+        """
+
         self.dbname = dbname
         self.user = user
         self.password = password
@@ -26,9 +40,26 @@ class WarehouseOps:
             self.create_tables()
 
     def log(self, message):
+        """
+        Write a log message to the log file.
+
+        Parameters:
+        message (str): The message to be logged.
+
+        Returns:
+        None
+        """
         self.log_file.write(f"{message}\n")
 
     def drop_db(self):
+        """
+        Drop the existing database.
+
+        This method deletes the current database if the drop_db_flag is set to True during initialization.
+
+        Returns:
+        None
+        """
         try:
             conn = psycopg2.connect(dbname="postgres", user=self.user, password=self.password, host=self.host)
             conn.autocommit = True
@@ -47,6 +78,14 @@ class WarehouseOps:
             self.log(f"Error dropping database: {e}")
 
     def connect_db(self):
+        """
+        Connect to the PostgreSQL database.
+
+        This method establishes a connection to the specified PostgreSQL database using the credentials and host provided during initialization.
+
+        Returns:
+        None
+        """
         try:
             conn = psycopg2.connect(dbname="postgres", user=self.user, password=self.password, host=self.host)
             conn.autocommit = True
@@ -65,6 +104,15 @@ class WarehouseOps:
             self.log(f"Error connecting to database: {e}")
 
     def warehouse_settings(self):
+        """
+        Retrieve the warehouse settings.
+
+        This method fetches and returns the configuration settings for the warehouse,
+        which include parameters such as minimum sale quantity, maximum capacity, and other operational limits.
+
+        Returns:
+        dict: A dictionary containing warehouse configuration settings.
+        """
         settings = {
             "product_name": ["Coca-Cola 1.5L", "Sprite 1.5L", "Fanta 1.5L",
                              "Spa 1.5L", "Lipton Tea 1L", "Heinz Ketchup 750ml",
@@ -84,13 +132,22 @@ class WarehouseOps:
             "n_pallets_buffer": 1,
             "storage_label": "STORAGE",
             "n_pallets_storage": 100,
-            "new_pallets": 0.7,  # expected n = 20 * 0.8
+            "new_pallets": 0.7,  # expected n = 20 * 0.7
             "variation": 0.2,    #
             "min_sale": 0        # 0-nothing sells, 1-all sells,
         }
         return settings
 
     def create_tables(self):
+        """
+        Create the necessary tables in the database.
+
+        This method creates the required tables for the warehouse operations,
+        such as tables for pallets, products, and locations.
+
+        Returns:
+        None
+        """
         try:
             # Create Products table
             self.cur.execute("""
@@ -198,7 +255,7 @@ class WarehouseOps:
             """)
             storage_location_id = self.cur.fetchone()[0]
 
-            for _ in range(100):
+            for _ in range(settings["n_pallets_storage"]):
                 self.cur.execute("""
                     INSERT INTO Pallets (product_id, location_id, quantity)
                     VALUES (%s, %s, %s)
@@ -212,6 +269,16 @@ class WarehouseOps:
             self.log(f"Error creating tables: {e}")
 
     def truck_arrives(self):
+        """
+        Handle the arrival of a truck with new pallets.
+
+        This method simulates the arrival of a truck delivering new pallets of products
+        to the loading dock. The number and type of pallets are determined based on the
+        warehouse settings and current inventory levels.
+
+        Returns:
+        None
+        """
         settings = self.settings
         products = settings["product_name"]
         units_per_pallet = settings["n_units_per_pallet"]
@@ -256,6 +323,16 @@ class WarehouseOps:
         self.conn.commit()
 
     def move_pallets_from_loading_dock(self):
+        """
+        Move pallets from the loading dock to the floor or buffer areas.
+
+        This method checks the available space on the floor and buffer areas and moves
+        pallets from the loading dock to these areas accordingly. It ensures that the
+        loading dock is cleared as efficiently as possible based on space constraints.
+
+        Returns:
+        None
+        """
         # Query for pallets in LoadingDock
         self.cur.execute("""
             SELECT id, product_id FROM Pallets 
@@ -308,6 +385,17 @@ class WarehouseOps:
         self.conn.commit()
 
     def simulate_daily_sales(self):
+        """
+        Simulate daily sales of products on the floor area.
+
+        This method simulates the sale of products from pallets located on the floor.
+        It reduces the quantity of each product based on a random sale quantity and
+        updates the inventory accordingly. If a pallet is emptied, it is moved to
+        storage.
+
+        Returns:
+        None
+        """
         settings = self.settings
         min_sale = settings["min_sale"]
 
@@ -353,6 +441,16 @@ class WarehouseOps:
         self.conn.commit()
 
     def move_from_buffer(self):
+        """
+        Move pallets from the buffer area to the floor area.
+
+        This method transfers pallets from the buffer area to the floor area, ensuring
+        that products are available for sale. It checks for available space on the
+        floor and moves pallets accordingly to maintain optimal inventory levels.
+
+        Returns:
+        None
+        """
         # Query for available spots in the Floor area
         self.cur.execute("""
             SELECT id, product_id FROM Locations 
@@ -389,6 +487,23 @@ class WarehouseOps:
         self.conn.commit()
 
     def simulate(self, days=10):
+        """
+        Run the warehouse operations simulation for a given number of days.
+
+        This method simulates the daily operations of the warehouse over a specified number of days.
+        Each day, the following events are executed in sequence:
+        1. Truck arrives with new pallets.
+        2. Pallets are moved from the loading dock to floor or buffer areas.
+        3. Daily sales are simulated, reducing inventory on the floor.
+        4. Pallets are moved from the buffer to the floor if needed.
+        5. Pallets are moved from the loading dock again to clear any remaining pallets.
+
+        Parameters:
+        days (int): The number of days to run the simulation (default is 10).
+
+        Returns:
+        None
+        """
         for day in range(days):
             self.log(f"Day {day + 1} simulation starts")
 
@@ -404,12 +519,25 @@ class WarehouseOps:
             # Event 4: Move from Buffer
             self.move_from_buffer()
 
-            # Additional Step: Move Pallets from Loading Dock again
+            # Event 5: Move Pallets from Loading Dock again
             self.move_pallets_from_loading_dock()
 
             self.log(f"Day {day + 1} simulation ends")
 
     def log_movement(self, event):
+        """
+        Log the movement of pallets in the warehouse.
+
+        This method records the movement event in the database by inserting a new record
+        into the Movements table. The record includes the event description and the current
+        count of pallets in the storage, loading dock, floor, and buffer areas.
+
+        Parameters:
+        event (str): A description of the movement event.
+
+        Returns:
+        None
+        """
         self.cur.execute("""
             INSERT INTO Movements (event, storage, loadingdock, floor, buffer)
             VALUES (
@@ -432,6 +560,16 @@ class WarehouseOps:
         self.conn.commit()
 
     def make_figure(self):
+        """
+        Create a bar chart showing pallet movements over time.
+
+        This method retrieves data from the Movements table, converts it into lists,
+        and generates a stacked bar chart using Matplotlib. The chart displays the
+        number of pallets in storage, loading dock, floor, and buffer areas over time.
+
+        Returns:
+        None
+        """
         self.cur.execute("""
             SELECT storage, loadingdock, floor, buffer FROM Movements
         """)
@@ -473,6 +611,16 @@ class WarehouseOps:
         plt.show()
 
     def __del__(self):
+        """
+        Destructor method to close the log file.
+
+        This method is called when the WarehouseOps instance is about to be destroyed.
+        It logs a message indicating that the log file is being closed and then closes
+        the log file to ensure all log entries are properly saved.
+
+        Returns:
+        None
+        """
         self.log("Closing log file")
         self.log_file.close()
 
