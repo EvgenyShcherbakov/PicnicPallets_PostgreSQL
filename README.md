@@ -4,6 +4,32 @@ Overview
 
 WarehouseOps is a simulation project designed to manage and optimize warehouse operations. It simulates various processes such as truck arrivals, pallet movements, and daily sales to help understand and improve warehouse efficiency.
 
+Workflow
+
+The basic model workflow represents a simplified reality of warehouse operations:
+
+•	Loading and Selling: Units are loaded onto pallets and sold from designated Floor locations for each product. Empty pallets are stored in the Storage location.
+
+•	Replenishment: Trucks arrive to replenish stock. Pallets are taken from storage, filled with products, and left at the Loading dock location.
+
+•	Database Query: The algorithm queries the database to check if the product's specific location can accept another pallet (each location can hold up to 2 pallets). If there is no space on the Floor, the pallet is sent to the Buffer location. The Loading dock must be cleared if possible.
+
+•	Sales Simulation: During the day, sales are simulated by reducing the quantities on pallets at the Floor location with random variations. When a pallet becomes empty, it is sent to Storage, making space available on the Floor.
+
+•	End of Day Checks: At the end of the day, the algorithm checks if fully loaded pallets in the Buffer can be moved to empty spots on the Floor. If any pallets were left in the Loading dock because they couldn't be moved in the morning, they are moved now.
+
+•	Daily Cycle: The day ends, and the next day starts with the arrival of a truck with new products.
+
+Simulation Parameters
+
+The simulation parameters, found in the warehouse_settings dictionary, allow for different scenarios under various constraints, including:
+
+•	Daily product delivery amounts (matching, higher than, or lower than the sale speed).
+
+Investigation Goal
+
+The goal is to determine under which parameters a bottleneck appears in the warehouse operations.
+
 Features
 
 •	Database Integration: Connects to a PostgreSQL database to manage warehouse data.
